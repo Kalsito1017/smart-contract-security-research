@@ -1,6 +1,4 @@
-<p align="center">
-<img src="./images/puppy-raffle.svg" width="400" alt="puppy-raffle">
-<br/>
+
 
 # Puppy Raffle
 
@@ -43,12 +41,6 @@ cd 4-puppy-raffle-audit
 make
 ```
 
-### Optional Gitpod
-
-If you can't or don't want to run and install locally, you can work with this repo in Gitpod. If you do this, you can skip the `clone this repo` part.
-
-[![Open in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/#github.com/Cyfrin/4-puppy-raffle-audit)
-
 # Usage
 
 ## Testing
@@ -69,12 +61,6 @@ and for coverage based testing:
 forge coverage --report debug
 ```
 
-# Audit Scope Details
-
-- Commit Hash: 2a47715b30cf11ca82db148704e67652ad679cd8
-- In Scope:
-
-```
 ./src/
 └── PuppyRaffle.sol
 ```
