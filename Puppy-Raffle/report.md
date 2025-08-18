@@ -1,41 +1,3 @@
-### [I-1] pragma solidity ^0.7.6 Invalid Version of the contract! Current one is 0.8.30!
-
-## Description:
-The contract specifies a Solidity compiler version pragma of ^0.7.6, which is outdated. The current project standard version is 0.8.30. Using an older compiler version can introduce compatibility issues, miss important language features, and potentially expose the contract to known bugs or security vulnerabilities fixed in later Solidity releases.
-
-## Impact:
-
-Potential incompatibility with other contracts or tooling expecting Solidity 0.8.x.
-
-Loss of newer compiler safety checks and language improvements introduced after 0.7.x.
-
-Increased risk of bugs or security vulnerabilities that have been addressed in Solidity 0.8.30.
-
-May cause build or deployment failures if the environment expects a consistent compiler version.
-
-## Proof of Concept:
-In the contract file, the pragma line:
-
-```javascript
-   pragma solidity ^0.7.6;
-``` 
-differs from the project's standard:
-
-```javascript
-pragma solidity ^0.8.30;
-```
-Attempting to compile with 0.8.30 the contract will either fail or produce warnings about incompatible syntax or behavior.
-
-## Recommended Mitigation:
-
-Update the pragma statement in the contract source code to match the project standard:
-
-```diff
-+ pragma solidity ^0.8.30;
-```
-Test the contract thoroughly after upgrading the compiler version to ensure compatibility.
-
-Adjust code as necessary to comply with Solidity 0.8.x breaking changes and new best practices.
 
 
 ### [M-1] Looping through players array to check for duplicates in `PuppyRaffle::enterRaffle` is a potential denial of service (DoS) attack, incrementing gas costs for future entrants.
@@ -146,3 +108,168 @@ function enterRaffle(address[] memory newPlayers) public payable {
 +    raffleId = raffleId + 1;
      require(block.timestamp >= raffleStartTime + raffleDuration, "PuppyRaffle: Raffle not over");
 ```
+
+
+### [L-1] Unused Function `_isActivePlayer` (Root Cause: Redundant function → Impact: Increased contract size and potential confusion)
+
+**Description:** The `_isActivePlayer()` function iterates through the `players` array to check if `msg.sender` is an active player. However, the function is not called anywhere in the contract, making it redundant.
+
+**Impact:** 
+- Increases contract size unnecessarily.  
+- Adds potential confusion during audits and maintenance.  
+- Minor gas inefficiency if ever used, since it loops through all players instead of using a mapping.
+
+
+**Proof of Concept:**
+<details><summary>Proof of Code</summary>
+
+```solidity
+function _isActivePlayer() internal view returns (bool) {
+    for (uint256 i = 0; i < players.length; i++) {
+        if (players[i] == msg.sender) {
+            return true;
+        }
+    }
+    return false;
+}
+```
+</details>
+
+**Recommended Mitigation:** Consider removing the function if it is not being used.
+Recomendations:   
+<details><summary>Remove code</summary>
+
+```diff
+- function _isActivePlayer() internal view returns (bool) {
+-     for (uint256 i = 0; i < players.length; i++) {
+-         if (players[i] == msg.sender) {
+-             return true;
+-         }
+-     }
+-     return false;
+- }
+```
+</details> 
+
+
+### [L-2] State Variable Could Be Constant (Root Cause: Non-constant state variables → Impact: Higher gas usage)
+
+**Description:**  
+Several state variables are initialized with fixed values at deployment and are never updated afterward. Declaring such variables without the `constant` keyword causes Solidity to store them in contract storage, which increases gas usage when accessing them.
+
+**Impact:**  
+- Higher gas consumption when these variables are read.  
+- Unnecessary storage slot usage.  
+- Minor inefficiency, but easily avoidable.
+
+**Proof of Concept:**  
+<details><summary>3 Found Instances</summary>
+
+```solidity
+- Found in `src/PuppyRaffle.sol` [Line: 38]
+string private commonImageUri = "ipfs://QmSsYRx3LpDAb1GZQm7zZ1AuHZjfbPkD6J7s9r41xu1mf8";
+
+- Found in src/PuppyRaffle.sol [Line: 43]
+string private rareImageUri = "ipfs://QmUPjADFGEKmfohdTaNcWhp7VGk26h5jXDA7v3VtTnTLcW";
+
+- Found in src/PuppyRaffle.sol [Line: 48]
+string private legendaryImageUri = "ipfs://QmYx6GsYAKnNzZ9A6NvEKV9nf1VaDzJrqDR23Y8YSkebLU";
+```
+</details>
+
+**Recommended Mitigation:**  
+Mark these state variables as `constant` to save gas.
+
+<details><summary>Edit Code</summary>
+
+```diff
+- string private commonImageUri = "ipfs://QmSsYRx3LpDAb1GZQm7zZ1AuHZjfbPkD6J7s9r41xu1mf8";
++ string private constant commonImageUri = "ipfs://QmSsYRx3LpDAb1GZQm7zZ1AuHZjfbPkD6J7s9r41xu1mf8";
+
+- string private rareImageUri = "ipfs://QmUPjADFGEKmfohdTaNcWhp7VGk26h5jXDA7v3VtTnTLcW";
++ string private constant rareImageUri = "ipfs://QmUPjADFGEKmfohdTaNcWhp7VGk26h5jXDA7v3VtTnTLcW";
+
+- string private legendaryImageUri = "ipfs://QmYx6GsYAKnNzZ9A6NvEKV9nf1VaDzJrqDR23Y8YSkebLU";
++ string private constant legendaryImageUri = "ipfs://QmYx6GsYAKnNzZ9A6NvEKV9nf1VaDzJrqDR23Y8YSkebLU";
+
+```
+</details>
+
+### [L-3] Centralization Risk (Root Cause: Contract owner has privileged rights → Impact: Trust assumptions and potential misuse)
+
+**Description:**  
+The contract includes an owner with privileged access to perform administrative tasks. Any admin function controlled by the owner requires trust that the owner will not perform malicious actions, such as draining funds or changing critical parameters.
+
+**Impact:**  
+- Users must trust the contract owner.  
+- Owner can change fees or other critical parameters, which could be misused.  
+- Centralization risk may affect security and decentralization guarantees.
+
+**Proof of Concept:**  
+<details><summary>2 Found Instances</summary>
+
+  ```solidity
+- Found in `src/PuppyRaffle.sol` [Line: 18]
+  contract PuppyRaffle is ERC721, Ownable {
+- Found in `src/PuppyRaffle.sol` [Line: 167]
+function changeFeeAddress(address newFeeAddress) external onlyOwner {
+
+```
+</details>
+
+**Recommended Mitigation:** 
+ - Clearly document all admin functions and privileges.
+
+ - Consider multisig or timelock for sensitive actions to reduce single-point-of-failure risk.
+
+ - Where possible, reduce reliance on privileged roles.
+
+
+## [G-1] Unchanged state variables should be declared constant or immutable
+
+Reading from storage is much more expensive than reading from a `constant` or `immutable` variable.  
+
+**Instances:**  
+- `PuppyRaffle::raffleDuration` should be `immutable`  
+- `PuppyRaffle::commonImageUri` should be `constant`  
+- `PuppyRaffle::rareImageUri` should be `constant`  
+- `PuppyRaffle::legendaryImageUri` should be `constant`
+
+### [I-1] pragma solidity ^0.7.6 Invalid Version of the contract! Current one is 0.8.30!
+
+## Description:
+The contract specifies a Solidity compiler version pragma of ^0.7.6, which is outdated. The current project standard version is 0.8.30. Using an older compiler version can introduce compatibility issues, miss important language features, and potentially expose the contract to known bugs or security vulnerabilities fixed in later Solidity releases.
+
+## Impact:
+
+Potential incompatibility with other contracts or tooling expecting Solidity 0.8.x.
+
+Loss of newer compiler safety checks and language improvements introduced after 0.7.x.
+
+Increased risk of bugs or security vulnerabilities that have been addressed in Solidity 0.8.30.
+
+May cause build or deployment failures if the environment expects a consistent compiler version.
+
+## Proof of Concept:
+In the contract file, the pragma line:
+
+```javascript
+   pragma solidity ^0.7.6;
+``` 
+differs from the project's standard:
+
+```javascript
+pragma solidity ^0.8.30;
+```
+Attempting to compile with 0.8.30 the contract will either fail or produce warnings about incompatible syntax or behavior.
+
+## Recommended Mitigation:
+
+Update the pragma statement in the contract source code to match the project standard:
+
+```diff
++ pragma solidity ^0.8.30;
+```
+Test the contract thoroughly after upgrading the compiler version to ensure compatibility.
+
+Adjust code as necessary to comply with Solidity 0.8.x breaking changes and new best practices.
